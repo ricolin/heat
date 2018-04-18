@@ -49,6 +49,7 @@ from heat.engine import template
 from heat.objects import resource as resource_objects
 from heat.objects import resource_data as resource_data_objects
 from heat.objects import resource_properties_data as rpd_objects
+from heat.objects import stack_reference
 from heat.rpc import client as rpc_client
 
 cfg.CONF.import_opt('action_retry_limit', 'heat.common.config')
@@ -1204,6 +1205,16 @@ class Resource(status.ResourceStatus):
             yield self._do_action(self.ADOPT,
                                   resource_data={
                                       'resource_id': self.external_id})
+
+            try:
+                stack_reference.StackReference.set_stack_reference(
+                    self.context, self.external_id, self.stack.id, self.id)
+            except exception.ExternalRsrcNotReady as e:
+                self.status = self.FAILED
+                self.status_reason = six.text_type(e)
+                self.store()
+                raise exception.ResourceFailure(e, self, action)
+
             self.check()
             return
 
@@ -2045,6 +2056,9 @@ class Resource(status.ResourceStatus):
             return
 
         try:
+            stack_reference.StackReference.delete_all_by_rsrc(
+                self.context, self.stack.id, self.id)
+
             resource_objects.Resource.delete(self.context, self.id)
         except exception.NotFound:
             # Don't fail on delete if the db entry has

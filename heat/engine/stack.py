@@ -50,6 +50,8 @@ from heat.objects import raw_template as raw_template_object
 from heat.objects import resource as resource_objects
 from heat.objects import snapshot as snapshot_object
 from heat.objects import stack as stack_object
+from heat.objects import stack_reference as stack_ref_object
+
 from heat.objects import stack_tag as stack_tag_object
 from heat.objects import user_creds as ucreds_object
 from heat.rpc import api as rpc_api
@@ -1348,7 +1350,11 @@ class Stack(collections.Mapping):
         self.thread_group_mgr.start(self.id, self._converge_create_or_update)
 
     def _converge_create_or_update(self):
-        current_resources = self._update_or_store_resources()
+        try:
+            current_resources = self._update_or_store_resources()
+        except exception.ExternalRsrcNotReady as e:
+            self.state_set(self.action, self.FAILED, six.text_type(e))
+            return
         self._compute_convg_dependencies(self.ext_rsrcs_db, self.dependencies,
                                          current_resources)
         # Store list of edges
@@ -1460,6 +1466,17 @@ class Stack(collections.Mapping):
                 rsrc.current_template_id = self.t.id
                 rsrc.store()
                 rsrcs[rsrc.name] = rsrc
+                if rsrc.external_id is not None:
+                    try:
+                        stack_ref_object.StackReference.set_stack_reference(
+                            self.context,
+                            rsrc.external_id,
+                            self.id, rsrc.id)
+                    except exception.ExternalRsrcNotReady as e:
+                        rsrc.status = resource.Resource.FAILED
+                        rsrc.status_reason = six.text_type(e)
+                        rsrc.store()
+                        raise
             else:
                 update_needed_by(existing_rsrc_db)
                 resource.Resource.set_needed_by(

@@ -560,3 +560,9 @@ class UnableToAutoAllocateNetwork(HeatException):
 class ActionNotSupportedWithReference(HeatException):
     msg_fmt = _('Action %(action)s not spported when Reference exists. '
                 'Reference detail: %(reference)s')
+
+
+class ExternalRsrcNotReady(HeatException):
+    msg_fmt = _('External Resource %(reference_rsrc_id)s from Stack '
+                '%(reference_stack_id)s is under status %(action)s '
+                '%(status)s. and not ready for reference.')
