@@ -63,6 +63,7 @@ from heat.objects import resource as resource_objects
 from heat.objects import service as service_objects
 from heat.objects import snapshot as snapshot_object
 from heat.objects import stack as stack_object
+from heat.objects import stack_reference as stack_ref_object
 from heat.rpc import api as rpc_api
 from heat.rpc import worker_api as rpc_worker_api
 
@@ -951,6 +952,9 @@ class EngineService(service.ServiceBase):
         """
         # Get the database representation of the existing stack
         db_stack = self._get_stack(cnxt, stack_identity)
+        stack_ref_object.StackReference.validate_no_match_reference(
+            cnxt, db_stack.id, 'Update Stack')
+
         LOG.info('Updating stack %s', db_stack.name)
         if cfg.CONF.reauthentication_auth_method == 'trusts':
             current_stack = parser.Stack.load(
@@ -1007,6 +1011,8 @@ class EngineService(service.ServiceBase):
         """
         # Get the database representation of the existing stack
         db_stack = self._get_stack(cnxt, stack_identity)
+        stack_ref_object.StackReference.validate_no_match_reference(
+            cnxt, db_stack.id, 'Preview Update Stack')
         LOG.info('Previewing update of stack %s', db_stack.name)
 
         current_stack = parser.Stack.load(cnxt, stack=db_stack)
@@ -1345,6 +1351,9 @@ class EngineService(service.ServiceBase):
                 st.action == parser.Stack.DELETE):
             raise exception.EntityNotFound(entity='Stack', name=st.name)
 
+        stack_ref_object.StackReference.validate_no_match_reference(
+            cnxt, st.id, 'Delete Stack')
+
         LOG.info('Deleting stack %s', st.name)
         stack = parser.Stack.load(cnxt, stack=st)
         self.resource_enforcer.enforce_stack(stack, is_registered_policy=True)
@@ -1472,6 +1481,9 @@ class EngineService(service.ServiceBase):
                 LOG.info('exporting stack %s', stk.name)
 
         st = self._get_stack(cnxt, stack_identity)
+        stack_ref_object.StackReference.validate_no_match_reference(
+            cnxt, st.id, 'Abandon Stack')
+
         stack = parser.Stack.load(cnxt, stack=st)
         lock = stack_lock.StackLock(cnxt, stack.id, self.engine_id)
         with lock.thread_lock():
