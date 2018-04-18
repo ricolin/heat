@@ -397,3 +397,33 @@ class Service(BASE, HeatBase, SoftDelete):
     report_interval = sqlalchemy.Column('report_interval',
                                         sqlalchemy.Integer,
                                         nullable=False)
+
+
+class StackReference(BASE, HeatBase):
+
+    __tablename__ = 'stack_reference'
+
+    id = sqlalchemy.Column('id',
+                           sqlalchemy.Integer,
+                           primary_key=True,
+                           nullable=False)
+    stack_id = sqlalchemy.Column(
+        'stack_id',
+        sqlalchemy.String(36),
+        sqlalchemy.ForeignKey('stack.id'),
+        nullable=False)
+    rsrc_id = sqlalchemy.Column(
+        'rsrc_id',
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey('resource.id'),
+        nullable=False)
+    reference_stack_id = sqlalchemy.Column(
+        'reference_stack_id',
+        sqlalchemy.String(36),
+        sqlalchemy.ForeignKey('stack.id'),
+        nullable=False)
+    reference_rsrc_id = sqlalchemy.Column(
+        'reference_rsrc_id',
+        sqlalchemy.Integer,
+        sqlalchemy.ForeignKey('resource.id'),
+        nullable=False)

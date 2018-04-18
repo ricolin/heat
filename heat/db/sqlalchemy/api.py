@@ -239,6 +239,9 @@ def resource_purge_deleted(context, stack_id):
     query = context.session.query(models.Resource)
     result = query.filter_by(**filters)
     attr_ids = [r.attr_data_id for r in result if r.attr_data_id is not None]
+    rsrc_ids = [r.id for r in result]
+    for rsrc_id in rsrc_ids:
+        stack_reference_delete_all_by_rsrc(context, stack_id, rsrc_id)
     with context.session.begin(subtransactions=True):
         result.delete()
         if attr_ids:
@@ -1854,3 +1857,82 @@ def reset_stack_status(context, stack_id, stack=None):
         session.query(
             models.StackLock
         ).filter_by(stack_id=stack_id).delete()
+
+
+def stack_reference_get(context, reference_id):
+    result = context.session.query(models.StackReference).get(reference_id)
+    return result or None
+
+
+def stack_reference_get_all_by_stack(context, stack_id):
+    result = (context.session.query(models.StackReference)
+              .filter_by(stack_id=stack_id)
+              .all())
+    return result or []
+
+
+def stack_reference_get_all_by_rsrc(context, stack_id, rsrc_id):
+    result = (context.session.query(models.StackReference)
+              .filter_by(stack_id=stack_id, rsrc_id=rsrc_id)
+              .all())
+    return result or []
+
+
+def stack_reference_get_all_by_reference_stack(context, reference_stack_id):
+    result = (context.session.query(models.StackReference)
+              .filter_by(reference_stack_id=reference_stack_id)
+              .all())
+    return result or []
+
+
+def stack_reference_delete(context, reference_id):
+    session = context.session
+    with session.begin(subtransactions=True):
+        result = stack_reference_get(context, reference_id)
+        if result:
+            session.delete(result)
+
+
+def stack_reference_delete_all_by_stack(context, stack_id):
+    session = context.session
+    with session.begin(subtransactions=True):
+        LOG.debug('Deleting all stack reference for stack %(stack_id)s',
+                  {'stack_id': stack_id})
+        for reference in stack_reference_get_all_by_stack(
+            context, stack_id
+        ):
+            session.delete(reference)
+
+
+def stack_reference_delete_all_by_rsrc(context, stack_id, rsrc_id):
+    session = context.session
+    with session.begin(subtransactions=True):
+        LOG.debug('Deleting all stack reference for resource %(rsrc_id)s '
+                  'in stack %(stack_id)s',
+                  {'rsrc_id': rsrc_id, 'stack_id': stack_id})
+        for reference in stack_reference_get_all_by_rsrc(
+            context, stack_id, rsrc_id
+        ):
+            session.delete(reference)
+
+
+def stack_reference_delete_all_by_reference_stack(context, reference_stack_id):
+    session = context.session
+    with session.begin(subtransactions=True):
+        LOG.debug('Deleting all stack reference for referenced stack '
+                  '%(stack_id)s',
+                  {'stack_id': reference_stack_id})
+        for reference in stack_reference_get_all_by_reference_stack(
+            context, reference_stack_id
+        ):
+            session.delete(reference)
+
+
+def stack_reference_set(context, values):
+    session = context.session
+    reference = models.StackReference()
+    reference.update(values)
+
+    with session.begin():
+        reference.save(session)
+        return reference
