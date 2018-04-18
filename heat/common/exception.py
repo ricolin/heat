@@ -555,3 +555,8 @@ class InvalidTemplateVersions(HeatException):
 
 class UnableToAutoAllocateNetwork(HeatException):
     msg_fmt = _('Unable to automatically allocate a network: %(message)s')
+
+
+class ActionNotSupportedWithReference(HeatException):
+    msg_fmt = _('Action %(action)s not spported when Reference exists. '
+                'Reference detail: %(reference)s')
